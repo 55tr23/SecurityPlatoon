@@ -21,104 +21,196 @@ class ReportingAgent(BaseAgent):
         self.console = Console()
         
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Process all findings and generate comprehensive reports."""
-        vulnerabilities = input_data.get("vulnerabilities", [])
-        exploit_attempts = input_data.get("exploit_attempts", [])
-        patches = input_data.get("patches", [])
+        """Process input data to generate a comprehensive security report."""
+        try:
+            vulnerabilities = input_data.get("vulnerabilities", [])
+            exploit_attempts = input_data.get("exploit_attempts", [])
+            patches = input_data.get("patches", [])
+            
+            # Classify vulnerabilities by type and severity
+            vuln_by_type = {}
+            vuln_by_severity = {
+                "Critical": 0,
+                "High": 0,
+                "Medium": 0,
+                "Low": 0
+            }
+            
+            for vuln in vulnerabilities:
+                vuln_type = vuln.get("vulnerability_type", "unknown")
+                severity = vuln.get("severity", "Low")
+                
+                if vuln_type not in vuln_by_type:
+                    vuln_by_type[vuln_type] = 0
+                vuln_by_type[vuln_type] += 1
+                
+                if severity in vuln_by_severity:
+                    vuln_by_severity[severity] += 1
+            
+            # Generate executive summary
+            executive_summary = await self._generate_executive_summary(
+                vuln_by_type,
+                vuln_by_severity,
+                len(exploit_attempts),
+                len(patches)
+            )
+            
+            # Generate technical details
+            technical_details = await self._generate_technical_details(
+                vulnerabilities,
+                exploit_attempts,
+                patches
+            )
+            
+            # Generate recommendations
+            recommendations = await self._generate_recommendations(
+                vulnerabilities,
+                exploit_attempts,
+                patches
+            )
+            
+            # Create report
+            report = {
+                "executive_summary": executive_summary,
+                "technical_details": technical_details,
+                "recommendations": recommendations,
+                "statistics": {
+                    "vulnerabilities_by_type": vuln_by_type,
+                    "vulnerabilities_by_severity": vuln_by_severity,
+                    "exploit_attempts": len(exploit_attempts),
+                    "patches": len(patches)
+                }
+            }
+            
+            self.update_state({
+                "current_task": "report generation",
+                "findings": [report],  # Convert to list for AgentState
+                "status": "completed"
+            })
+            
+            return report
+        except Exception as e:
+            self.update_state({
+                "current_task": "report generation",
+                "findings": [],  # Empty list for AgentState
+                "status": "error",
+                "error": str(e)
+            })
+            return {
+                "executive_summary": f"Error in report generation: {str(e)}",
+                "technical_details": "",
+                "recommendations": []
+            }
         
-        report = await self._generate_report(vulnerabilities, exploit_attempts, patches)
-        
-        self.update_state({
-            "current_task": "report generation",
-            "findings": {"report": report.dict()},
-            "status": "completed"
-        })
-        
-        return {
-            "report": report.dict(),
-            "formatted_report": await self._format_report(report)
-        }
-        
-    async def _generate_report(self, vulnerabilities: List[Dict[str, Any]], 
-                             exploit_attempts: List[Dict[str, Any]], 
-                             patches: List[Dict[str, Any]]) -> Report:
-        """Generate a comprehensive security report."""
-        executive_summary = await self._generate_executive_summary(vulnerabilities, exploit_attempts, patches)
-        technical_details = await self._generate_technical_details(vulnerabilities, exploit_attempts, patches)
-        recommendations = await self._generate_recommendations(vulnerabilities, exploit_attempts, patches)
-        
-        return Report(
-            timestamp=datetime.now().isoformat(),
-            vulnerabilities=vulnerabilities,
-            exploit_attempts=exploit_attempts,
-            patches=patches,
-            executive_summary=executive_summary,
-            technical_details=technical_details,
-            recommendations=recommendations
-        )
-        
-    async def _generate_executive_summary(self, vulnerabilities: List[Dict[str, Any]], 
-                                        exploit_attempts: List[Dict[str, Any]], 
-                                        patches: List[Dict[str, Any]]) -> str:
+    async def _generate_executive_summary(
+        self,
+        vuln_by_type: Dict[str, int],
+        vuln_by_severity: Dict[str, int],
+        exploit_count: int,
+        patch_count: int
+    ) -> str:
         """Generate an executive summary of the security assessment."""
-        critical_vulns = sum(1 for v in vulnerabilities if "Critical" in v["classification"]["analysis"])
-        successful_exploits = sum(1 for e in exploit_attempts if e["success"])
-        high_prob_patches = sum(1 for p in patches if p["success_probability"] >= 0.8)
+        total_vulns = sum(vuln_by_type.values())
         
         prompt = f"""
-        Generate an executive summary for the security assessment with the following statistics:
-        - Total vulnerabilities found: {len(vulnerabilities)}
-        - Critical vulnerabilities: {critical_vulns}
-        - Successfully exploited vulnerabilities: {successful_exploits}
-        - High probability patches available: {high_prob_patches}
+        Generate an executive summary for a security assessment with the following findings:
         
-        Focus on:
-        1. Overall security posture
-        2. Key findings and risks
-        3. Immediate actions required
-        4. Long-term recommendations
+        Total Vulnerabilities: {total_vulns}
+        By Type: {vuln_by_type}
+        By Severity: {vuln_by_severity}
+        Successful Exploit Attempts: {exploit_count}
+        Patches Developed: {patch_count}
+        
+        Format the summary with these sections:
+        1. Overall Security Posture
+        2. Key Findings and Risks
+        3. Immediate Actions Required
+        4. Long-term Recommendations
         """
         
         return await self.communicate(prompt)
         
-    async def _generate_technical_details(self, vulnerabilities: List[Dict[str, Any]], 
-                                        exploit_attempts: List[Dict[str, Any]], 
-                                        patches: List[Dict[str, Any]]) -> str:
-        """Generate detailed technical information."""
+    async def _generate_technical_details(
+        self,
+        vulnerabilities: List[Dict[str, Any]],
+        exploit_attempts: List[Dict[str, Any]],
+        patches: List[Dict[str, Any]]
+    ) -> str:
+        """Generate technical details of the security assessment."""
+        vuln_details = []
+        for vuln in vulnerabilities:
+            vuln_details.append(
+                f"- {vuln.get('vulnerability_type', 'Unknown')} vulnerability: "
+                f"{vuln.get('description', 'No description')} "
+                f"(Severity: {vuln.get('severity', 'Unknown')})"
+            )
+            
+        exploit_details = []
+        for attempt in exploit_attempts:
+            exploit_details.append(
+                f"- Exploit attempt on {attempt.get('vulnerability_id', 'Unknown')}: "
+                f"{'Successful' if attempt.get('success', False) else 'Failed'} "
+                f"(Impact: {attempt.get('impact_level', 'Unknown')})"
+            )
+            
+        patch_details = []
+        for patch in patches:
+            patch_details.append(
+                f"- Patch for {patch.get('vulnerability_id', 'Unknown')}: "
+                f"{patch.get('description', 'No description')} "
+                f"(Status: {patch.get('status', 'Unknown')})"
+            )
+            
         prompt = f"""
-        Generate detailed technical information for the security assessment with:
-        - {len(vulnerabilities)} vulnerabilities
-        - {len(exploit_attempts)} exploit attempts
-        - {len(patches)} patches
+        Generate technical details for the security assessment with:
+        
+        Vulnerability Details:
+        {chr(10).join(vuln_details) if vuln_details else "No vulnerabilities found"}
+        
+        Exploit Attempts:
+        {chr(10).join(exploit_details) if exploit_details else "No exploit attempts"}
+        
+        Patches:
+        {chr(10).join(patch_details) if patch_details else "No patches required"}
         
         Include:
-        1. Vulnerability details and classifications
-        2. Exploit attempt results and methodologies
-        3. Patch descriptions and implementation steps
-        4. Technical impact analysis
+        1. Detailed analysis of each vulnerability type
+        2. Impact assessment
+        3. Technical recommendations
         """
         
         return await self.communicate(prompt)
         
-    async def _generate_recommendations(self, vulnerabilities: List[Dict[str, Any]], 
-                                      exploit_attempts: List[Dict[str, Any]], 
-                                      patches: List[Dict[str, Any]]) -> List[str]:
-        """Generate actionable recommendations."""
-        prompt = f"""
-        Generate actionable recommendations based on:
-        - {len(vulnerabilities)} vulnerabilities
-        - {len(exploit_attempts)} exploit attempts
-        - {len(patches)} patches
+    async def _generate_recommendations(
+        self,
+        vulnerabilities: List[Dict[str, Any]],
+        exploit_attempts: List[Dict[str, Any]],
+        patches: List[Dict[str, Any]]
+    ) -> List[str]:
+        """Generate recommendations based on the assessment findings."""
+        vuln_types = set(v.get("vulnerability_type", "unknown") for v in vulnerabilities)
+        severities = set(v.get("severity", "Low") for v in vulnerabilities)
+        successful_exploits = sum(1 for a in exploit_attempts if a.get("success", False))
         
-        Provide specific, prioritized recommendations for:
-        1. Immediate actions
-        2. Short-term improvements
-        3. Long-term security enhancements
+        prompt = f"""
+        Generate specific recommendations based on:
+        
+        Vulnerability Types: {', '.join(vuln_types)}
+        Severity Levels: {', '.join(severities)}
+        Successful Exploits: {successful_exploits}
+        Patches Required: {len(patches)}
+        
+        Provide recommendations for:
+        1. Immediate actions (next 24-48 hours)
+        2. Short-term improvements (1-4 weeks)
+        3. Long-term security enhancements (1-6 months)
         4. Process and policy updates
+        
+        Format each recommendation as a bullet point starting with a dash (-)
         """
         
-        recommendations_text = await self.communicate(prompt)
-        return [rec.strip() for rec in recommendations_text.split('\n') if rec.strip()]
+        recommendations = await self.communicate(prompt)
+        return [rec.strip() for rec in recommendations.split('\n') if rec.strip().startswith('-')]
         
     async def _format_report(self, report: Report) -> str:
         """Format the report using Rich for better readability."""
