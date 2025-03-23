@@ -4,6 +4,34 @@ import subprocess
 import shutil
 from pathlib import Path
 
+def check_python_version():
+    """Check if Python version is compatible."""
+    version = sys.version_info
+    if version.major != 3 or version.minor > 11:
+        print("\nWarning: This script is optimized for Python 3.11 or lower.")
+        print(f"Current Python version: {sys.version}")
+        print("Please install Python 3.11 from https://www.python.org/downloads/release/python-3116/")
+        print("and run this script with Python 3.11")
+        sys.exit(1)
+
+def check_build_tools():
+    """Check if Visual C++ Build Tools are installed."""
+    try:
+        # Try to find vswhere.exe
+        program_files = os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)')
+        vswhere_path = os.path.join(program_files, 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
+        
+        if not os.path.exists(vswhere_path):
+            print("\nVisual C++ Build Tools not found.")
+            print("Please install Visual Studio Build Tools from:")
+            print("https://visualstudio.microsoft.com/visual-cpp-build-tools/")
+            print("\nDuring installation, select 'Desktop development with C++'")
+            sys.exit(1)
+        return True
+    except Exception as e:
+        print(f"\nError checking build tools: {e}")
+        sys.exit(1)
+
 def create_icon():
     """Create a simple icon file using PIL."""
     from PIL import Image, ImageDraw
@@ -35,6 +63,7 @@ def create_icon():
 def install_dependencies():
     """Install all required dependencies."""
     dependencies = [
+        'numpy==1.24.3',  # Add numpy first as it's a dependency for other packages
         'langgraph==0.0.10',
         'langchain==0.1.0',
         'langchain-openai==0.0.2',
@@ -59,8 +88,9 @@ def install_dependencies():
         # Install dependencies with specific versions
         for dep in dependencies:
             print(f"\nInstalling {dep}...")
+            # Use --no-cache-dir to force download of pre-built wheels
             result = subprocess.run(
-                [sys.executable, '-m', 'pip', 'install', dep],
+                [sys.executable, '-m', 'pip', 'install', '--no-cache-dir', dep],
                 capture_output=True,
                 text=True,
                 check=True
@@ -71,6 +101,11 @@ def install_dependencies():
     except subprocess.CalledProcessError as e:
         print(f"\nError installing dependencies: {e}")
         print(f"Error output: {e.stderr}")
+        print("\nTroubleshooting steps:")
+        print("1. Make sure you're using Python 3.11")
+        print("2. Install Visual Studio Build Tools")
+        print("3. Try running: pip install --upgrade pip setuptools wheel")
+        print("4. Try installing packages one by one to identify problematic ones")
         sys.exit(1)
 
 def get_pyinstaller_path():
@@ -100,17 +135,6 @@ def get_pyinstaller_path():
                 print(f"Found PyInstaller at: {scripts_path}")
                 return scripts_path
         
-        # If still not found, try to find it in the user's local packages
-        local_packages = os.path.join(os.path.expanduser('~'), 'AppData', 'Local', 'Packages')
-        if os.path.exists(local_packages):
-            for package in os.listdir(local_packages):
-                if 'PythonSoftwareFoundation.Python' in package:
-                    python_path = os.path.join(local_packages, package)
-                    scripts_path = os.path.join(python_path, 'LocalCache', 'local-packages', 'python313', 'Scripts', 'pyinstaller.exe')
-                    if os.path.exists(scripts_path):
-                        print(f"Found PyInstaller at: {scripts_path}")
-                        return scripts_path
-        
         print("Could not find PyInstaller in any of the expected locations")
         return None
         
@@ -120,6 +144,12 @@ def get_pyinstaller_path():
 
 def build_executable():
     """Build the executable using PyInstaller."""
+    # Check Python version
+    check_python_version()
+    
+    # Check build tools
+    check_build_tools()
+    
     # Create icon if it doesn't exist
     if not os.path.exists('icon.ico'):
         create_icon()
