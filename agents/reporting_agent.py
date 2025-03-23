@@ -1,9 +1,10 @@
 from typing import Dict, Any, List
 from datetime import datetime
+from .base_agent import BaseAgent, AgentState
 from rich.console import Console
 from rich.table import Table
+from pydantic import BaseModel
 from rich.panel import Panel
-from .base_agent import BaseAgent, AgentState
 
 class Report(BaseModel):
     timestamp: str

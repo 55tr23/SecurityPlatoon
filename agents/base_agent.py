@@ -20,7 +20,7 @@ class BaseAgent:
         self.name = name
         self.role = role
         self.llm = ChatOpenAI(
-            model="gpt-4-turbo-preview",
+            model="gpt-3.5-turbo",
             temperature=0.7
         )
         self.state = AgentState()
@@ -31,6 +31,8 @@ class BaseAgent:
         
     def update_state(self, new_state: Dict[str, Any]):
         """Update the agent's state with new information."""
+        if "findings" in new_state and isinstance(new_state["findings"], list):
+            new_state["findings"] = {"items": new_state["findings"]}
         self.state = AgentState(**{**self.state.dict(), **new_state})
         
     def get_state(self) -> Dict[str, Any]:

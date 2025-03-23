@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
 from .base_agent import BaseAgent, AgentState
+from pydantic import BaseModel
 
 class ExploitAttempt(BaseModel):
     vulnerability_id: str

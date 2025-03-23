@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
 from .base_agent import BaseAgent, AgentState
+from pydantic import BaseModel
 
 class Patch(BaseModel):
     vulnerability_id: str
@@ -108,13 +109,17 @@ class PatchingAgent(BaseAgent):
         
     async def _generate_summary(self) -> str:
         """Generate a summary of patch development results."""
+        if not self.patches:
+            return "No patches were developed during this analysis."
+            
         high_probability_patches = sum(1 for patch in self.patches if patch.success_probability >= 0.8)
+        avg_probability = sum(patch.success_probability for patch in self.patches) / len(self.patches)
         
         summary = f"""
         Patch Development Summary:
         - Total patches developed: {len(self.patches)}
         - High probability patches: {high_probability_patches}
-        - Average success probability: {sum(patch.success_probability for patch in self.patches) / len(self.patches):.2f}
+        - Average success probability: {avg_probability:.2f}
         
         Detailed patch documentation and implementation guides have been prepared.
         """

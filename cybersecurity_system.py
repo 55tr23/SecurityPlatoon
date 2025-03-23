@@ -1,6 +1,4 @@
 from typing import Dict, Any, List, Tuple
-from langgraph.graph import Graph, StateGraph
-from langgraph.prebuilt import ToolExecutor
 from agents.threat_analysis_agent import ThreatAnalysisAgent
 from agents.penetration_agent import PenetrationAgent
 from agents.patching_agent import PatchingAgent
@@ -20,31 +18,16 @@ class CybersecuritySystem:
         """Analyze a system for vulnerabilities and generate a comprehensive report."""
         self.console.print("[bold blue]Starting Cybersecurity Analysis[/bold blue]")
         
-        # Create the workflow graph
-        workflow = StateGraph(StateType=Dict[str, Any])
+        # Initialize state
+        state = {"system_info": system_info}
         
-        # Add nodes for each agent
-        workflow.add_node("threat_analysis", self._run_threat_analysis)
-        workflow.add_node("penetration_testing", self._run_penetration_testing)
-        workflow.add_node("patch_development", self._run_patch_development)
-        workflow.add_node("report_generation", self._run_report_generation)
+        # Run each phase in sequence
+        state = await self._run_threat_analysis(state)
+        state = await self._run_penetration_testing(state)
+        state = await self._run_patch_development(state)
+        state = await self._run_report_generation(state)
         
-        # Define the edges and flow
-        workflow.add_edge("threat_analysis", "penetration_testing")
-        workflow.add_edge("penetration_testing", "patch_development")
-        workflow.add_edge("patch_development", "report_generation")
-        
-        # Set the entry point
-        workflow.set_entry_point("threat_analysis")
-        
-        # Compile the graph
-        chain = workflow.compile()
-        
-        # Run the workflow
-        initial_state = {"system_info": system_info}
-        final_state = await chain.ainvoke(initial_state)
-        
-        return final_state
+        return state
         
     async def _run_threat_analysis(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Run the threat analysis phase."""
