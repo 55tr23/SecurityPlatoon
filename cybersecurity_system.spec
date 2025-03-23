@@ -6,7 +6,10 @@ a = Analysis(
     ['gui.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[
+        ('agents', 'agents'),  # Include the agents directory
+        ('.env.example', '.'),  # Include the example environment file
+    ],
     hiddenimports=[
         'langgraph',
         'langchain',
@@ -16,7 +19,16 @@ a = Analysis(
         'asyncio',
         'tkinter',
         'json',
-        'threading'
+        'threading',
+        'PIL',
+        'PIL._tkinter_finder',
+        'dotenv',
+        'requests',
+        'bs4',
+        'rich.console',
+        'rich.text',
+        'rich.panel',
+        'rich.table'
     ],
     hookspath=[],
     hooksconfig={},
