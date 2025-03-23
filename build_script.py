@@ -35,30 +35,66 @@ def create_icon():
 def install_pyinstaller():
     """Install PyInstaller using pip."""
     try:
-        subprocess.run([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pyinstaller'], check=True)
+        # First, try to uninstall any existing installation
+        subprocess.run([sys.executable, '-m', 'pip', 'uninstall', '-y', 'pyinstaller'], 
+                      capture_output=True, text=True)
+        
+        # Install PyInstaller
+        result = subprocess.run(
+            [sys.executable, '-m', 'pip', 'install', '--upgrade', 'pyinstaller'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print("PyInstaller installation output:")
+        print(result.stdout)
         print("PyInstaller installed successfully")
     except subprocess.CalledProcessError as e:
         print(f"Error installing PyInstaller: {e}")
+        print(f"Error output: {e.stderr}")
         sys.exit(1)
 
 def get_pyinstaller_path():
     """Get the path to the PyInstaller executable."""
     try:
-        # Try to find PyInstaller in the Python Scripts directory
-        scripts_dir = os.path.join(os.path.dirname(sys.executable), 'Scripts')
-        pyinstaller_path = os.path.join(scripts_dir, 'pyinstaller.exe')
+        # Get the Python installation directory
+        python_dir = os.path.dirname(sys.executable)
+        print(f"Python directory: {python_dir}")
         
-        if os.path.exists(pyinstaller_path):
-            return pyinstaller_path
-            
-        # If not found, try to find it in the current Python environment
-        import site
-        for path in site.getsitepackages():
-            pyinstaller_path = os.path.join(path, 'Scripts', 'pyinstaller.exe')
+        # Try to find PyInstaller in the Scripts directory
+        scripts_dir = os.path.join(python_dir, 'Scripts')
+        print(f"Looking in Scripts directory: {scripts_dir}")
+        
+        if os.path.exists(scripts_dir):
+            pyinstaller_path = os.path.join(scripts_dir, 'pyinstaller.exe')
             if os.path.exists(pyinstaller_path):
+                print(f"Found PyInstaller at: {pyinstaller_path}")
                 return pyinstaller_path
-                
+        
+        # If not found, try to find it in the site-packages directory
+        import site
+        print("Site packages directories:")
+        for path in site.getsitepackages():
+            print(f"Checking: {path}")
+            scripts_path = os.path.join(path, 'Scripts', 'pyinstaller.exe')
+            if os.path.exists(scripts_path):
+                print(f"Found PyInstaller at: {scripts_path}")
+                return scripts_path
+        
+        # If still not found, try to find it in the user's local packages
+        local_packages = os.path.join(os.path.expanduser('~'), 'AppData', 'Local', 'Packages')
+        if os.path.exists(local_packages):
+            for package in os.listdir(local_packages):
+                if 'PythonSoftwareFoundation.Python' in package:
+                    python_path = os.path.join(local_packages, package)
+                    scripts_path = os.path.join(python_path, 'LocalCache', 'local-packages', 'python313', 'Scripts', 'pyinstaller.exe')
+                    if os.path.exists(scripts_path):
+                        print(f"Found PyInstaller at: {scripts_path}")
+                        return scripts_path
+        
+        print("Could not find PyInstaller in any of the expected locations")
         return None
+        
     except Exception as e:
         print(f"Error finding PyInstaller: {e}")
         return None
@@ -75,14 +111,20 @@ def build_executable():
     # Get PyInstaller path
     pyinstaller_path = get_pyinstaller_path()
     if not pyinstaller_path:
-        print("Could not find PyInstaller. Please install it manually using: pip install pyinstaller")
+        print("\nCould not find PyInstaller. Please try these steps manually:")
+        print("1. Open Command Prompt as Administrator")
+        print("2. Run: pip uninstall pyinstaller")
+        print("3. Run: pip install pyinstaller")
+        print("4. Run: where pyinstaller")
+        print("\nThen run this script again.")
         sys.exit(1)
     
-    print(f"Using PyInstaller at: {pyinstaller_path}")
+    print(f"\nUsing PyInstaller at: {pyinstaller_path}")
     
     # Build the executable
     try:
-        subprocess.run([
+        print("\nStarting build process...")
+        result = subprocess.run([
             pyinstaller_path,
             '--clean',
             '--noconfirm',
@@ -91,7 +133,10 @@ def build_executable():
             '--icon=icon.ico',
             '--name=CybersecuritySystem',
             'gui.py'
-        ], check=True)
+        ], capture_output=True, text=True, check=True)
+        
+        print("\nBuild output:")
+        print(result.stdout)
         
         # Create distribution directory
         dist_dir = Path('dist')
@@ -116,15 +161,17 @@ Create a .env file in the same directory with your API key:
 OPENAI_API_KEY=your-api-key-here
 """)
             
-            print("Build complete! Executable is in the 'dist' directory.")
+            print("\nBuild complete! Executable is in the 'dist' directory.")
         else:
-            print("Error: Executable was not created successfully")
+            print("\nError: Executable was not created successfully")
+            print("Check the build output above for errors.")
             
     except subprocess.CalledProcessError as e:
-        print(f"Error building executable: {e}")
+        print(f"\nError building executable: {e}")
+        print(f"Error output: {e.stderr}")
         sys.exit(1)
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        print(f"\nUnexpected error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
