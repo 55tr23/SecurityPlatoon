@@ -32,25 +32,44 @@ def create_icon():
     # Save as ICO
     image.save('icon.ico', format='ICO')
 
-def install_pyinstaller():
-    """Install PyInstaller using pip."""
+def install_dependencies():
+    """Install all required dependencies."""
+    dependencies = [
+        'langgraph==0.0.10',
+        'langchain==0.1.0',
+        'langchain-openai==0.0.2',
+        'python-dotenv==1.0.0',
+        'requests==2.31.0',
+        'beautifulsoup4==4.12.2',
+        'pydantic==2.5.2',
+        'rich==13.7.0',
+        'pyinstaller==6.3.0',
+        'pillow==10.2.0',
+        'langchain-core==0.1.27',
+        'pydantic-core==2.14.5'
+    ]
+    
     try:
-        # First, try to uninstall any existing installation
-        subprocess.run([sys.executable, '-m', 'pip', 'uninstall', '-y', 'pyinstaller'], 
-                      capture_output=True, text=True)
+        # First, uninstall existing packages
+        for dep in dependencies:
+            package_name = dep.split('==')[0]
+            subprocess.run([sys.executable, '-m', 'pip', 'uninstall', '-y', package_name],
+                         capture_output=True, text=True)
         
-        # Install PyInstaller
-        result = subprocess.run(
-            [sys.executable, '-m', 'pip', 'install', '--upgrade', 'pyinstaller'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        print("PyInstaller installation output:")
-        print(result.stdout)
-        print("PyInstaller installed successfully")
+        # Install dependencies with specific versions
+        for dep in dependencies:
+            print(f"\nInstalling {dep}...")
+            result = subprocess.run(
+                [sys.executable, '-m', 'pip', 'install', dep],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            print(result.stdout)
+            
+        print("\nAll dependencies installed successfully")
     except subprocess.CalledProcessError as e:
-        print(f"Error installing PyInstaller: {e}")
+        print(f"\nError installing dependencies: {e}")
         print(f"Error output: {e.stderr}")
         sys.exit(1)
 
@@ -105,8 +124,9 @@ def build_executable():
     if not os.path.exists('icon.ico'):
         create_icon()
     
-    # Install PyInstaller if not already installed
-    install_pyinstaller()
+    # Install dependencies
+    print("\nInstalling dependencies...")
+    install_dependencies()
     
     # Get PyInstaller path
     pyinstaller_path = get_pyinstaller_path()
@@ -132,6 +152,19 @@ def build_executable():
             '--windowed',
             '--icon=icon.ico',
             '--name=CybersecuritySystem',
+            '--add-data=agents;agents',
+            '--add-data=.env.example;.',
+            '--hidden-import=pydantic.deprecated.decorator',
+            '--hidden-import=pydantic_core',
+            '--hidden-import=pydantic_migration',
+            '--hidden-import=pydantic_internal_validators',
+            '--hidden-import=langchain_core',
+            '--hidden-import=langchain_core.tools',
+            '--hidden-import=langchain_core.tools.base',
+            '--hidden-import=langgraph.prebuilt',
+            '--hidden-import=langgraph.prebuilt.chat_agent_executor',
+            '--hidden-import=langgraph.graph',
+            '--hidden-import=langgraph.prebuilt.tool_executor',
             'gui.py'
         ], capture_output=True, text=True, check=True)
         

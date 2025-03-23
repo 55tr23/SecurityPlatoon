@@ -16,6 +16,10 @@ a = Analysis(
         'langchain_openai',
         'rich',
         'pydantic',
+        'pydantic.deprecated.decorator',
+        'pydantic_core',
+        'pydantic_migration',
+        'pydantic_internal_validators',
         'asyncio',
         'tkinter',
         'json',
@@ -28,7 +32,14 @@ a = Analysis(
         'rich.console',
         'rich.text',
         'rich.panel',
-        'rich.table'
+        'rich.table',
+        'langchain_core',
+        'langchain_core.tools',
+        'langchain_core.tools.base',
+        'langgraph.prebuilt',
+        'langgraph.prebuilt.chat_agent_executor',
+        'langgraph.graph',
+        'langgraph.prebuilt.tool_executor'
     ],
     hookspath=[],
     hooksconfig={},
@@ -39,6 +50,15 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+
+# Add additional data files
+a.datas += [
+    ('langgraph', 'langgraph'),
+    ('langchain', 'langchain'),
+    ('langchain_core', 'langchain_core'),
+    ('pydantic', 'pydantic'),
+    ('pydantic_core', 'pydantic_core'),
+]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
@@ -56,7 +76,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,  # Changed to True for debugging
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
