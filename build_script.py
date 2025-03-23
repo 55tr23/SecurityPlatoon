@@ -4,16 +4,6 @@ import subprocess
 import shutil
 from pathlib import Path
 
-def check_python_version():
-    """Check if Python version is compatible."""
-    version = sys.version_info
-    if version.major != 3 or version.minor > 11:
-        print("\nWarning: This script is optimized for Python 3.11 or lower.")
-        print(f"Current Python version: {sys.version}")
-        print("Please install Python 3.11 from https://www.python.org/downloads/release/python-3116/")
-        print("and run this script with Python 3.11")
-        sys.exit(1)
-
 def check_build_tools():
     """Check if Visual C++ Build Tools are installed."""
     try:
@@ -62,8 +52,18 @@ def create_icon():
 
 def install_dependencies():
     """Install all required dependencies."""
+    # First, upgrade pip and install build tools
+    print("\nUpgrading pip and installing build tools...")
+    subprocess.run([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel'],
+                  capture_output=True, text=True, check=True)
+    
+    # Install numpy first as it's a dependency for other packages
+    print("\nInstalling numpy...")
+    subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-cache-dir', 'numpy'],
+                  capture_output=True, text=True, check=True)
+    
+    # Install dependencies with specific versions that work with Python 3.13
     dependencies = [
-        'numpy==1.24.3',  # Add numpy first as it's a dependency for other packages
         'langgraph==0.0.10',
         'langchain==0.1.0',
         'langchain-openai==0.0.2',
@@ -102,10 +102,10 @@ def install_dependencies():
         print(f"\nError installing dependencies: {e}")
         print(f"Error output: {e.stderr}")
         print("\nTroubleshooting steps:")
-        print("1. Make sure you're using Python 3.11")
-        print("2. Install Visual Studio Build Tools")
-        print("3. Try running: pip install --upgrade pip setuptools wheel")
-        print("4. Try installing packages one by one to identify problematic ones")
+        print("1. Install Visual Studio Build Tools")
+        print("2. Try running: pip install --upgrade pip setuptools wheel")
+        print("3. Try installing packages one by one to identify problematic ones")
+        print("4. If a package fails, try installing it without version specification")
         sys.exit(1)
 
 def get_pyinstaller_path():
@@ -144,9 +144,6 @@ def get_pyinstaller_path():
 
 def build_executable():
     """Build the executable using PyInstaller."""
-    # Check Python version
-    check_python_version()
-    
     # Check build tools
     check_build_tools()
     
